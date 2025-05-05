@@ -120,23 +120,25 @@ fn run() -> anyhow::Result<ExitStatus> {
             (args.command, "".to_string())
         }
     };
-    let mut sbatch = std::process::Command::new("sbatch")
-        .arg(format!(
-            "--array=0-{}%{}",
-            command_arg_vec.len() - 1,
-            args.max_tasks
-        ))
-        .args(args.sbatch_args)
+    let mut sbatch_command = std::process::Command::new("sbatch");
+    sbatch_command.arg(format!(
+        "--array=0-{}%{}",
+        command_arg_vec.len() - 1,
+        args.max_tasks
+    ));
+    if let Some(args) = args.sbatch_args {
+        sbatch_command.args(args.split_whitespace());
+    }
+    let mut sbatch_child = sbatch_command
         .stdin(std::process::Stdio::piped())
         .spawn()
         .context("Unable to invoke sbatch")?;
-    if let Some(mut stdin) = sbatch.stdin.take() {
+    if let Some(mut stdin) = sbatch_child.stdin.take() {
         writeln!(
             stdin,
             "#!/bin/bash
 set -u
 export TMPDIR=/ssd/home/$USER/TEMP
-export REGISTRY_AUTH_FILE=/mnt/apps/etc/auth.json
 COMMAND_ARGS=(
 {command_args}
 )
@@ -145,6 +147,7 @@ srun --ntasks=1 podman run --rm \
     -v /mnt/home/shared/:/mnt/home/shared/ \
     {command_volume_arg} \
     {container_volume_args} \
+    --authfile /mnt/apps/etc/auth.json \
     --entrypoint {command} \
     {podman_args} \
     {image} \"${{COMMAND_ARGS[$SLURM_ARRAY_TASK_ID]}}\"",
@@ -156,7 +159,7 @@ srun --ntasks=1 podman run --rm \
     } else {
         return Err(anyhow!("Unable to take stdin of sbatch"));
     }
-    Ok(sbatch.wait()?)
+    Ok(sbatch_child.wait()?)
 }
 
 fn volume_args_for_container(c: &Image) -> &'static str {
