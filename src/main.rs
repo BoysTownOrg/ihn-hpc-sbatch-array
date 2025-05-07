@@ -35,6 +35,9 @@ struct Args {
     /// The maximum number of simultaneous tasks
     #[arg(long, default_value_t = 16)]
     max_tasks: i32,
+    /// Podman image tag - ignored when IMAGE is fully qualified
+    #[arg(long)]
+    tag: Option<String>,
     /// Additional args to sbatch
     #[arg(long, allow_hyphen_values = true)]
     sbatch_args: Option<String>,
@@ -154,7 +157,7 @@ srun --ntasks=1 podman run --rm \
             command_args = command_arg_vec.join("\n"),
             container_volume_args = volume_args_for_container(&args.image),
             podman_args = args.podman_args.unwrap_or("".to_string()),
-            image = qualified_image_name(&args.image)
+            image = qualified_image_name(args.image, args.tag)
         )?;
     } else {
         return Err(anyhow!("Unable to take stdin of sbatch"));
@@ -173,9 +176,17 @@ fn volume_args_for_container(c: &Image) -> &'static str {
     }
 }
 
-fn qualified_image_name(c: &Image) -> &str {
-    match c {
-        Image::Freesurfer => "freesurfer/freesurfer:7.3.2",
-        Image::QualifiedName(n) => n,
+fn qualified_image_name(image: Image, tag: Option<String>) -> String {
+    match image {
+        Image::Freesurfer => format!(
+            "freesurfer/freesurfer:{}",
+            tag.unwrap_or_else(|| "7.3.2".to_string())
+        ),
+        Image::QualifiedName(n) => {
+            if let Some(t) = tag {
+                eprintln!("WARN: ignoring tag \"{t}\"");
+            }
+            n
+        }
     }
 }
