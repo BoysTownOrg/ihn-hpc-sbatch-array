@@ -147,6 +147,7 @@ COMMAND_ARGS=(
 )
 srun --ntasks=1 podman run --rm \
     -v \"$HOME\":\"$HOME\" \
+    -e HPC_HOME=\"$HOME\" \
     -v /mnt/home/shared/:/mnt/home/shared/ \
     {command_volume_arg} \
     {additional_podman_args} \
