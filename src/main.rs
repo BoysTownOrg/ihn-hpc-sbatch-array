@@ -149,13 +149,13 @@ srun --ntasks=1 podman run --rm \
     -v \"$HOME\":\"$HOME\" \
     -v /mnt/home/shared/:/mnt/home/shared/ \
     {command_volume_arg} \
-    {container_volume_args} \
+    {additional_podman_args} \
     --authfile /mnt/apps/etc/auth.json \
     --entrypoint {command} \
     {podman_args} \
     {image} \"${{COMMAND_ARGS[$SLURM_ARRAY_TASK_ID]}}\"",
             command_args = command_arg_vec.join("\n"),
-            container_volume_args = volume_args_for_container(&args.image),
+            additional_podman_args = podman_args_for_image(&args.image),
             podman_args = args.podman_args.unwrap_or("".to_string()),
             image = qualified_image_name(args.image, args.tag)
         )?;
@@ -165,12 +165,13 @@ srun --ntasks=1 podman run --rm \
     Ok(sbatch_child.wait()?)
 }
 
-fn volume_args_for_container(c: &Image) -> &'static str {
+fn podman_args_for_image(c: &Image) -> &'static str {
     match c {
         Image::Freesurfer => {
             "\
 -v /mnt/apps/etc/fs_license.txt:/usr/local/freesurfer/.license:ro \
--v /opt/matlab/runtime/R2019b/v97/:/usr/local/freesurfer/MCRv97"
+-v /opt/matlab/runtime/R2019b/v97/:/usr/local/freesurfer/MCRv97 \
+-e FS_LICENSE=/usr/local/freesurfer/.license"
         }
         Image::QualifiedName(_) => "",
     }
@@ -179,7 +180,7 @@ fn volume_args_for_container(c: &Image) -> &'static str {
 fn qualified_image_name(image: Image, tag: Option<String>) -> String {
     match image {
         Image::Freesurfer => format!(
-            "freesurfer/freesurfer:{}",
+            "docker.io/freesurfer/freesurfer:{}",
             tag.unwrap_or_else(|| "7.3.2".to_string())
         ),
         Image::QualifiedName(n) => {
