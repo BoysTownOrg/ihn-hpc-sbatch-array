@@ -94,17 +94,13 @@ fn main() -> std::process::ExitCode {
 
 fn run() -> anyhow::Result<ExitStatus> {
     let args = Args::parse();
-    let command_arg_path = std::fs::read_to_string(&args.command_arg_path).with_context(|| {
+    let command_arg_file_contents = std::fs::read_to_string(&args.command_arg_path).with_context(|| {
         format!(
             "Unable to read command argument file, {:?}",
             args.command_arg_path
         )
     })?;
-    let command_arg_vec = command_arg_path
-        .lines()
-        .map(|line| format!("\"{}\"", line.trim()))
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>();
+    let command_arg_vec = parse_command_arg_file(&command_arg_file_contents);
     let (command, command_volume_arg) = {
         let command_path = std::path::Path::new(&args.command);
         if command_path.exists() && command_path.extension().is_some_and(|ext| ext == "sh") {
@@ -191,4 +187,30 @@ fn qualified_image_name(image: Image, tag: Option<String>) -> String {
             n
         }
     }
+}
+
+fn parse_command_arg_file(contents: &str) -> Vec<String> {
+    contents
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(|line| format!("\"{}\"", line))
+        .collect::<Vec<_>>()
+}
+
+#[test]
+fn parses_command_arg_file() {
+    assert_eq!(
+        vec!["\"a\"", "\"b\"", "\"c\""],
+        parse_command_arg_file(
+            "
+     a
+
+     b
+
+c
+
+"
+        )
+    )
 }

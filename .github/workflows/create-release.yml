@@ -9,10 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: build
+      - name: build and test
         run: |
           rustup target add x86_64-unknown-linux-musl
           cargo build --target x86_64-unknown-linux-musl --release
+          cargo test --target x86_64-unknown-linux-musl --release
         env:
           IHN_HPC_SBATCH_ARRAY_VERSION: ${{ github.ref_name }}
       - name: create GitHub release
