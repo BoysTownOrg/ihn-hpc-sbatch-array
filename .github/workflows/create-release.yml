@@ -17,7 +17,7 @@ jobs:
         env:
           IHN_HPC_SBATCH_ARRAY_VERSION: ${{ github.ref_name }}
       - name: create GitHub release
-        run: gh release create ${{ github.ref_name }} cache-image.sh target/x86_64-unknown-linux-musl/release/ihn-hpc-sbatch-*
+        run: gh release create ${{ github.ref_name }} cache-image.sh target/x86_64-unknown-linux-musl/release/ihn-hpc-sbatch-{array,gpu}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ZIP_FILE: ihn-hpc-sbatch-array-${{ github.ref_name }}.zip
